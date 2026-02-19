@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Login</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-900 text-white flex items-center justify-center min-h-screen">
+
+<div class="bg-slate-800 p-8 rounded-xl w-96">
+<h2 class="text-2xl mb-6 text-center">Reminder Login</h2>
+
+<input id="username" placeholder="Username"
+class="w-full mb-4 p-2 bg-slate-700 rounded">
+
+<input id="password" type="password" placeholder="Password"
+class="w-full mb-4 p-2 bg-slate-700 rounded">
+
+<button onclick="login()" class="w-full bg-purple-600 py-2 rounded mb-3">
+Login
+</button>
+
+<button onclick="register()" class="w-full bg-green-600 py-2 rounded">
+Register
+</button>
+
+</div>
+
+<script>
+if (localStorage.getItem("token")) {
+  window.location.href = "/index.html";
+}
+
+async function login() {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch(`/login`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+
+  if (data.token) {
+    localStorage.setItem("token", data.token);
+    window.location.href = "/index.html";
+  } else {
+    alert(data.message);
+  }
+}
+
+async function register() {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch(`/register`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+  alert(data.message);
+}
+</script>
+
+</body>
+</html>

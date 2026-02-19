@@ -1,0 +1,180 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Reminder App</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script>
+if (!localStorage.getItem("token")) {
+  window.location.href = "/auth.html";
+}
+</script>
+</head>
+
+<body class="bg-slate-900 text-white min-h-screen p-8">
+    <div id="toast"
+  class="fixed top-6 right-6 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg hidden transition transform translate-x-full">
+</div>
+
+
+<div class="max-w-4xl mx-auto">
+
+<div class="flex justify-between items-center mb-6">
+  <h1 class="text-3xl font-bold">Reminder App</h1>
+  <div>
+    <span id="userDisplay" class="mr-4"></span>
+    <button onclick="logout()" class="bg-red-500 px-4 py-2 rounded">Logout</button>
+  </div>
+</div>
+
+<div class="bg-slate-800 p-6 rounded-lg mb-8">
+  <h2 class="text-xl mb-4">Add Reminder</h2>
+
+  <input id="title" placeholder="Title" class="w-full mb-3 p-2 bg-slate-700 rounded">
+  <textarea id="description" placeholder="Description" class="w-full mb-3 p-2 bg-slate-700 rounded"></textarea>
+  <input type="date" id="dueDate" class="w-full mb-3 p-2 bg-slate-700 rounded">
+  <input type="time" id="dueTime" class="w-full mb-3 p-2 bg-slate-700 rounded">
+
+  <button onclick="sendReminder()" class="bg-purple-600 px-4 py-2 rounded w-full">
+    Add Reminder
+  </button>
+</div>
+
+<div class="bg-slate-800 p-6 rounded-lg mb-8">
+  <h2 class="text-xl mb-4">Scheduled Reminders</h2>
+  <div id="reminderList"></div>
+</div>
+
+<div class="bg-slate-800 p-6 rounded-lg">
+  <h2 class="text-xl mb-4">Completed Reminders</h2>
+  <ul id="completedList" class="space-y-2 list-disc pl-5"></ul>
+</div>
+
+</div>
+
+<script>
+
+function logout() {
+  localStorage.removeItem("token");
+  window.location.href = "/auth.html";
+}
+
+async function loadUser() {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`/profile`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (res.status === 401) return logout();
+  const data = await res.json();
+  document.getElementById("userDisplay").innerText = data.username;
+}
+
+async function loadReminders() {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`/reminders`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (res.status === 401) return logout();
+  const reminders = await res.json();
+
+  const container = document.getElementById("reminderList");
+  container.innerHTML = "";
+
+  reminders.forEach(r => {
+    container.innerHTML += `
+      <div class="bg-slate-700 p-3 rounded mb-3 flex justify-between">
+        <div>
+          <p class="font-bold">${r.title}</p>
+          <p class="text-sm">${r.description}</p>
+          <p class="text-xs">${r.dateTime}</p>
+        </div>
+      </div>
+    `;
+  });
+}
+
+async function loadCompleted() {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`/completed`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (res.status === 401) return logout();
+  const completed = await res.json();
+
+  const ul = document.getElementById("completedList");
+  ul.innerHTML = "";
+
+  completed.forEach(c => {
+    ul.innerHTML += `
+      <li class="text-green-400">
+        ${c.title}
+        <span class="text-gray-400 text-sm">
+          (Completed at ${new Date(c.completedAt).toLocaleString()})
+        </span>
+      </li>
+    `;
+  });
+}
+
+async function sendReminder() {
+  const token = localStorage.getItem("token");
+
+  const reminderData = {
+    title: document.getElementById("title").value,
+    description: document.getElementById("description").value,
+    date: document.getElementById("dueDate").value,
+    time: document.getElementById("dueTime").value
+  };
+
+  await fetch(`/send-reminder`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(reminderData)
+  });
+
+  document.getElementById("title").value = "";
+  document.getElementById("description").value = "";
+  document.getElementById("dueDate").value = "";
+  document.getElementById("dueTime").value = "";
+
+  loadReminders();
+}
+
+loadUser();
+loadReminders();
+loadCompleted();
+
+// 🔔 Toast Function
+function showToast(message) {
+  const toast = document.getElementById("toast");
+  toast.innerText = message;
+  toast.classList.remove("hidden");
+  toast.classList.remove("translate-x-full");
+
+  setTimeout(() => {
+    toast.classList.add("translate-x-full");
+    setTimeout(() => toast.classList.add("hidden"), 300);
+  }, 3000);
+}
+
+// 🔥 Real-Time Listener
+const eventSource = new EventSource("/events");
+
+eventSource.onmessage = function(event) {
+  const data = JSON.parse(event.data);
+
+  if (data.type === "REMINDER_TRIGGERED") {
+    loadReminders();
+    loadCompleted();
+    showToast(`🔔 Reminder Completed: ${data.title}`);
+  }
+};
+
+</script>
+
+</body>
+</html>
