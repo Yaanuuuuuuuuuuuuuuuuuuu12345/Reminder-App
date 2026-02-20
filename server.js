@@ -198,7 +198,16 @@ app.get("/completed", authenticate, (req, res) => {
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "auth.html"));
 });
+app.get("/admin/users", (req, res) => {
+  const safeUsers = users.map(u => ({
+    id: u.id,
+    username: u.username
+  }));
+
+  res.json(safeUsers);
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
